@@ -115,5 +115,6 @@ foreach ($sliding as $k => $cnt) {
 echo "$i              \n";
 
 $db->commit();
+$db->exec("CREATE INDEX index_u5 ON sliding (u5 ASC)");
 $db->exec("PRAGMA ignore_check_constraints = OFF");
 $db->exec("PRAGMA locking_mode = NORMAL");
