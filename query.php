@@ -32,15 +32,25 @@ $in = '';
 while (42) {
 	echo "S: ".implode(' ', $state)." ; B: ".implode(' ', $build)." ; IN: $in\n";
 	$out = [];
+
+	// Current state yielded no possible continuations, so try to recover
+	for ($i=2 ; $i < 6 && empty($rows) ; ++$i) {
+		$qs = $state;
+		array_shift($qs);
+		$us = [];
+		for ($u=$i ; $u < 6 ; ++$u) {
+			$us[] = "u{$u} = ?";
+		}
+		$us = implode(' AND ', $us);
+		$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE {$us} ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
+	}
+
 	foreach ($rows as $row) {
 		$txt->execute([$row['u6']]);
 		$nstate = array_values($row);
 		array_pop($nstate);
 		array_shift($nstate);
 		$out[] = [$nstate, $txt->fetch()['u_text'], $row['cnt']];
-	}
-	if (empty($out)) {
-		// Current state yielded no possible continuations, so try to recover
 	}
 	foreach ($out as $k => $o) {
 		echo "\t#$k: {$o[1]} ({$o[2]}) (".implode(',', $o[0]).")\n";
@@ -60,6 +70,7 @@ while (42) {
 			$out[0] = [$state, $pos[$auto]];
 			array_shift($out[0][0]);
 			$out[0][0][] = $auto;
+			$auto = 0;
 		}
 		else {
 			// We have no good state, so try to recover
@@ -76,6 +87,13 @@ while (42) {
 			if ($emit) {
 				echo "EMIT: $emit\n";
 				$build = [];
+				$final = $state[count($state)-1];
+				foreach ($state as $k => $v) {
+					if ($v === $final) {
+						break;
+					}
+					$state[$k] = 0;
+				}
 			}
 		}
 
@@ -101,23 +119,30 @@ while (42) {
 		// User typed a letter, so try to find units starting/continuing with that letter
 		$sel_units->execute(["$in%"]);
 		$units = $sel_units->fetchAll(PDO::FETCH_COLUMN, 0);
+
+		$u6_not = '';
+		if (!empty($out)) {
+			$u6_not = "AND u6 NOT IN (".implode(', ', array_column(array_column($out, 0), 4)).")";
+		}
+
 		//echo "Found ".count($units)." partial units matching $in: ".implode(', ', $units)."\n";
 		// Exclude currently shown continuations
 		if (empty($units)) {
-			$qs = array_merge($state, array_column(array_column($out, 0), 4));
-			$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE u1 = ? AND u2 = ? AND u3 = ? AND u4 = ? AND u5 = ? AND u6 NOT IN (?".str_repeat(', ?', count($out)-1).") ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
+			$qs = $state;
+			$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE u1 = ? AND u2 = ? AND u3 = ? AND u4 = ? AND u5 = ? {$u6_not} ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
 		}
 		else {
-			$qs = array_merge($state, array_column(array_column($out, 0), 4), $units);
-			$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE u1 = ? AND u2 = ? AND u3 = ? AND u4 = ? AND u5 = ? AND u6 NOT IN (?".str_repeat(', ?', count($out)-1).") AND u6 IN (?".str_repeat(', ?', count($units)-1).") ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
+			$qs = array_merge($state, $units);
+			$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE u1 = ? AND u2 = ? AND u3 = ? AND u4 = ? AND u5 = ? {$u6_not} AND u6 IN (?".str_repeat(', ?', count($units)-1).") ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
 
 			for ($i=2 ; $i < 6 && empty($rows) ; ++$i) {
 				array_shift($qs);
-				$us = '';
+				$us = [];
 				for ($u=$i ; $u < 6 ; ++$u) {
-					$us .= "u{$u} = ? AND ";
+					$us[] = "u{$u} = ?";
 				}
-				$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE {$us} u6 NOT IN (?".str_repeat(', ?', count($out)-1).") AND u6 IN (?".str_repeat(', ?', count($units)-1).") ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
+				$us = implode(' AND ', $us);
+				$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE {$us} {$u6_not} AND u6 IN (?".str_repeat(', ?', count($units)-1).") ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
 			}
 		}
 	}

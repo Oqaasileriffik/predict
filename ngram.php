@@ -51,7 +51,7 @@ $ins_unit->execute([0, "\u{e000}"]);
 $sliding = [];
 
 $i = 0;
-$res = $corpus->prepexec("SELECT p_id, p_body_norm as txt FROM pars ORDER BY p_id ASC");
+$res = $corpus->prepexec("SELECT p_id, p_body_norm as txt FROM pars ORDER BY p_id ASC LIMIT 100000");
 while ($row = $res->fetch()) {
 	// Remember state per token, so that when there are ambiguous readings we can continue from previous token for each one
 	$state = [0, 0, 0, 0, 0, 0];
@@ -63,6 +63,7 @@ while ($row = $res->fetch()) {
 			$oldstate = $state;
 		}
 		else if (preg_match('~^\t~', $line)) {
+			$wstate = [0, 0, 0, 0, 0, 0];
 			$state = $oldstate;
 			$units = explode(' ', trim($line));
 			foreach ($units as $unit) {
@@ -74,6 +75,14 @@ while ($row = $res->fetch()) {
 				else {
 					$upd_unit->execute([$uniq_units[$unit]]);
 				}
+
+				// Per-word sliding window
+				array_shift($wstate);
+				$wstate[] = $uniq_units[$unit];
+				$k = pack('N*', ...$wstate);
+				$sliding[$k] = ($sliding[$k] ?? 0) + 1;
+
+				// Global sliding window
 				array_shift($state);
 				$state[] = $uniq_units[$unit];
 				$k = pack('N*', ...$state);
