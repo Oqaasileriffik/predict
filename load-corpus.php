@@ -82,6 +82,7 @@ while ($line = fgets(STDIN)) {
 			$norm = preg_replace('~\t(".+?") Prefix/(\S+)~', "\t$2 $1", $norm);
 			$norm = preg_replace('~ i([A-Z]\S*) ~u', ' $1 ', $norm);
 			$norm = preg_replace('~ DIRTALE\S+~', '', $norm);
+			$norm = preg_replace('~ <\S+~', '', $norm);
 			$norm = preg_replace('~ @\S+~', '', $norm);
 			$norm = preg_replace('~ #\S+~', '', $norm);
 			$norm = preg_replace('~ Der/(\S+)~', ' der/$1', $norm);

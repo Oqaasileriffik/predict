@@ -120,18 +120,18 @@ while (42) {
 		$sel_units->execute(["$in%"]);
 		$units = $sel_units->fetchAll(PDO::FETCH_COLUMN, 0);
 
+		// Exclude currently shown continuations
 		$u6_not = '';
 		if (!empty($out)) {
 			$u6_not = "AND u6 NOT IN (".implode(', ', array_column(array_column($out, 0), 4)).")";
 		}
 
-		//echo "Found ".count($units)." partial units matching $in: ".implode(', ', $units)."\n";
-		// Exclude currently shown continuations
 		if (empty($units)) {
 			$qs = $state;
 			$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE u1 = ? AND u2 = ? AND u3 = ? AND u4 = ? AND u5 = ? {$u6_not} ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
 		}
 		else {
+			//echo "Found ".count($units)." partial units matching $in: ".implode(', ', $units)."\n";
 			$qs = array_merge($state, $units);
 			$rows = $db->prepexec("SELECT u1, u2, u3, u4, u5, u6, cnt FROM sliding WHERE u1 = ? AND u2 = ? AND u3 = ? AND u4 = ? AND u5 = ? {$u6_not} AND u6 IN (?".str_repeat(', ?', count($units)-1).") ORDER BY cnt DESC LIMIT 4", $qs)->fetchAll();
 
