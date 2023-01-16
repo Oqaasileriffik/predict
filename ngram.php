@@ -51,7 +51,7 @@ $ins_unit->execute([0, "\u{e000}"]);
 $sliding = [];
 
 $i = 0;
-$res = $corpus->prepexec("SELECT p_id, p_body_norm as txt FROM pars ORDER BY p_id ASC LIMIT 100000");
+$res = $corpus->prepexec("SELECT p_id, p_body_norm as txt FROM pars ORDER BY p_id ASC");
 while ($row = $res->fetch()) {
 	// Remember state per token, so that when there are ambiguous readings we can continue from previous token for each one
 	$state = [0, 0, 0, 0, 0, 0];

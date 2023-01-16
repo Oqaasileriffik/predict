@@ -10,7 +10,8 @@ $n_folds = 10;
 
 $corpus = new \TDC\PDO\SQLite("corpus.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
 
-$pars = $corpus->prepexec("SELECT p_id, LENGTH(p_body_norm) as p_len FROM pars ORDER BY p_id ASC LIMIT 100000")->fetchAll();
+$pars = $corpus->prepexec("SELECT p_id, LENGTH(p_body_norm) as p_len FROM pars ORDER BY p_id ASC")->fetchAll();
+echo "Shuffling ".count($pars)." paragraphs\n";
 // Fisher-Yates shuffle
 for ($i=0 ; $i<count($pars)-2 ; ++$i) {
 	$k = mt_rand($i, count($pars)-1);
